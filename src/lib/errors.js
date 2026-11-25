@@ -36,6 +36,19 @@ export function invalidParamHint(toolName) {
 
 export function errorToMcpContent(err, { toolName } = {}) {
   if (err instanceof UpstreamError) {
+    // 502/503（网关/上游繁忙，或上游返回空体被解析成 INTERNAL_ERROR）：统一「服务繁忙，请稍后重试」，
+    // retryAfter 按上游给的透出。避免把裸 502/503 当 INTERNAL_ERROR 直出、客户端不知怎么办。
+    const isBusy = err.httpStatus === 502 || err.httpStatus === 503
+      || err.code === 'UPSTREAM_UNAVAILABLE' || err.code === 'UPSTREAM_OVERLOAD';
+    if (isBusy) {
+      const code = (err.code === 'UPSTREAM_UNAVAILABLE' || err.code === 'UPSTREAM_OVERLOAD')
+        ? err.code
+        : (err.httpStatus === 502 ? 'UPSTREAM_OVERLOAD' : 'UPSTREAM_UNAVAILABLE');
+      const lines = [`[${code}] 服务繁忙，请稍后重试` + (err.retryAfter != null ? `（retryAfter ${err.retryAfter} 秒）` : '')];
+      if (err.retryAfter != null) lines.push(`retryAfter: ${err.retryAfter}s`);
+      if (err.requestId) lines.push(`requestId: ${err.requestId}`);
+      return { isError: true, content: [{ type: 'text', text: lines.join('\n') }] };
+    }
     const hint = err.code === 'INVALID_PARAM' ? invalidParamHint(toolName) : (HINTS[err.code] || '');
     const lines = [`[${err.code}] ${err.message}`, '', hint].filter(Boolean);
     if (err.retryAfter != null) lines.push(`retryAfter: ${err.retryAfter}s`);
