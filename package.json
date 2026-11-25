@@ -1,0 +1,39 @@
+{
+  "name": "free-api-mcp-server",
+  "version": "0.1.0",
+  "mcpName": "io.github.aiconvg/free-api-mcp",
+  "type": "module",
+  "description": "MCP server exposing the free TTS/ASR/OCR open API (voices, tts, asr, ocr, account, dubbing, video) over stdio and Streamable HTTP",
+  "license": "MIT",
+  "author": "aiconvg",
+  "keywords": ["mcp", "model-context-protocol", "modelcontextprotocol", "tts", "asr", "ocr", "text-to-speech", "speech-to-text", "dubbing", "video-transcription", "ai"],
+  "homepage": "https://www.free-api.aiconvg.xin",
+  "repository": { "type": "git", "url": "git+https://github.com/aiconvg/free-api-mcp-server.git" },
+  "bugs": { "url": "https://github.com/aiconvg/free-api-mcp-server/issues" },
+  "main": "src/index.js",
+  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
+  "bin": {
+    "free-api-mcp": "src/index.js"
+  },
+  "files": [
+    "src/",
+    "server.json",
+    "README.md",
+    ".env.example"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "smoke": "node test/smoke.stdio.js",
+    "verify": "node scripts/verify.mjs",
+    "verify:live": "node scripts/verify.mjs --live"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.20.2",
+    "express": "4.21.2",
+    "redis": "4.7.0",
+    "zod": "3.25.76"
+  }
+}
