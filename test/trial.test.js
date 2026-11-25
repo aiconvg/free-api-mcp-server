@@ -141,4 +141,22 @@ await rollbackTrial(null);
 await rollbackTrial(r2);
 check('rollbackTrial 存储不可用不抛错', true);
 
+// #5 额度耗尽错误码：QUOTA_EXCEEDED（与上游 02 同码）+ resetAt（北京日界 UTC+8 00:00），不再冒充 AUTH_REQUIRED
+const { nextBeijingResetAt, guestExhaustedMessage } = await import('../src/lib/guestGate.js');
+// 2026-11-25 16:26:56 北京 = 08:26:56Z → 次日北京零点 = 2026-11-26T00:00:00+08:00
+check('nextBeijingResetAt 北京傍晚→次日零点',
+  nextBeijingResetAt(new Date('2026-11-25T08:26:56Z')) === '2026-11-26T00:00:00+08:00',
+  nextBeijingResetAt(new Date('2026-11-25T08:26:56Z')));
+// 2026-11-26 00:30 北京 = 11-25 16:30Z → 次日北京零点 = 2026-11-27T00:00:00+08:00
+check('nextBeijingResetAt 北京刚过零点→再次日',
+  nextBeijingResetAt(new Date('2026-11-25T16:30:00Z')) === '2026-11-27T00:00:00+08:00',
+  nextBeijingResetAt(new Date('2026-11-25T16:30:00Z')));
+const em = guestExhaustedMessage(30, 30, new Date('2026-11-25T08:26:56Z'));
+check('额度耗尽文案用 [QUOTA_EXCEEDED] 码', em.includes('[QUOTA_EXCEEDED]'), em.split('\n')[0]);
+check('额度耗尽文案不再含 AUTH_REQUIRED', !em.includes('AUTH_REQUIRED'));
+check('额度耗尽文案带可解析 resetAt 行',
+  /(^|\n)resetAt: 2026-11-26T00:00:00\+08:00(\n|$)/.test(em),
+  (em.match(/resetAt: [^\n]+/) || [''])[0]);
+check('额度耗尽文案保留注册引导', em.includes('注册免费账号') && em.includes('https://www.free-api.aiconvg.xin'));
+
 process.exit(failed ? 1 : 0);

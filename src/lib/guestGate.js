@@ -53,10 +53,30 @@ export function guestBlockedMessage(toolName) {
   ].join('\n');
 }
 
-// 试用/游客额度用尽文案
-export function guestExhaustedMessage(used, limit) {
+// 下一北京零点（UTC+8 00:00）——MCP 试用/游客计数（Redis trialStore 与 stdio localCounter）
+// 都按北京日界重置，额度真实恢复时刻即次日北京 0 点。返回带 +08:00 偏移的 ISO 串，
+// 供客户端解析（与上游 02 QUOTA_EXCEEDED 的 resetAt 同格式）。
+// 注意：上游 02 游客池的 resetAt 是北京 08:00（UTC 午夜），那是 UpstreamError 路径，不在此处。
+export function nextBeijingResetAt(now = new Date()) {
+  const bj = new Date(now.getTime() + 8 * 3600 * 1000); // bj 的 UTC 字段 = 北京墙钟
+  const nextWallMidnightAsUtc = Date.UTC(
+    bj.getUTCFullYear(), bj.getUTCMonth(), bj.getUTCDate() + 1, 0, 0, 0,
+  ); // 把「次日北京 00:00 墙钟」当作 UTC 构造
+  const realUtc = new Date(nextWallMidnightAsUtc - 8 * 3600 * 1000); // 真实 UTC 时刻 = 墙钟 - 8h
+  const shown = new Date(realUtc.getTime() + 8 * 3600 * 1000); // 以北京本地呈现
+  const p = (n) => String(n).padStart(2, '0');
+  return `${shown.getUTCFullYear()}-${p(shown.getUTCMonth() + 1)}-${p(shown.getUTCDate())}T${p(shown.getUTCHours())}:${p(shown.getUTCMinutes())}:${p(shown.getUTCSeconds())}+08:00`;
+}
+
+// 试用/游客额度用尽文案：用与上游 02 相同的 QUOTA_EXCEEDED 码（客户端只认一个额度码），并带 resetAt。
+// 本地计数与 Redis 试用计数均按北京日界（UTC+8 00:00）重置，故 resetAt = 次日北京 0 点。
+// 「无令牌未配置」仍走 AUTH_REQUIRED（guestBlockedMessage / server 的 store_unavailable），不在此函数。
+export function guestExhaustedMessage(used, limit, now = new Date()) {
+  const resetAt = nextBeijingResetAt(now);
+  const bjText = `${resetAt.slice(0, 10)} ${resetAt.slice(11, 16)}`;
   return [
-    '[AUTH_REQUIRED] 免费试用次数已用完' + (limit != null ? `（本能力每日上限 ${limit} 次）` : '') + '。',
+    '[QUOTA_EXCEEDED] 免费试用次数已用完' + (limit != null ? `（本能力每日上限 ${limit} 次）` : '') + `，额度将于 resetAt（北京时间 ${bjText}）恢复。`,
+    `resetAt: ${resetAt}`,
     `注册免费账号即可获得每日额度：${SIGNUP_URL}`,
     '拿到令牌后，在客户端 MCP 配置的 env 里设置 FREE_API_TOKEN 即可继续使用。',
   ].join('\n');
