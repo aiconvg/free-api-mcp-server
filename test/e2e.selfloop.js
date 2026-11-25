@@ -15,7 +15,7 @@ const transport = new StdioClientTransport({
     ...process.env,
     MCP_TRANSPORT: 'stdio',
     FREE_API_TOKEN: token,
-    FREE_API_BASE_URL: process.env.FREE_API_BASE_URL || 'https://www.free-api.aiconvg.xin',
+    FREE_API_BASE_URL: process.env.FREE_API_BASE_URL || 'https://www.open-api.aiconvg.xin',
   },
 });
 const client = new Client({ name: 'e2e', version: '0.0.1' });

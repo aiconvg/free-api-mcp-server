@@ -2,12 +2,12 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.aiconvg/free-api-mcp",
   "description": "Free API MCP server: text-to-speech, speech-to-text, ASR jobs, OCR, multi-voice dubbing and video transcription over the free open API. Per-user Bearer token; standard engine free.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "free-api-mcp-server",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "transport": {
         "type": "stdio"
       }
