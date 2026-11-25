@@ -65,3 +65,17 @@ export function rollbackLocal(ticket) {
     logger.warn('trial.local_rollback_error', { err: String(e?.message || e) });
   }
 }
+
+// 只读：取本实例当个北京日各可试能力已用次数（stdio 游客 get_account 个人视图用）。
+// 返回 { <tool>: { used, limit, remaining } }。
+export function getLocalUsage() {
+  const limits = localLimits();
+  const db = load();
+  const out = {};
+  for (const tool of Object.keys(limits)) {
+    const used = Number(db[tool] || 0);
+    const limit = limits[tool];
+    out[tool] = { used, limit, remaining: Math.max(0, limit - used) };
+  }
+  return out;
+}

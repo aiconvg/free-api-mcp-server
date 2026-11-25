@@ -20,10 +20,18 @@ export const ttsTool = {
       engine: { type: 'string', enum: ['standard', 'premium'], description: '引擎：默认 standard（免费）；premium 需付费档，按积分计费' },
     },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      audioUrl: { type: 'string' },
+    },
+  },
   zodSchema: z.object({
-    text: z.string().min(1, 'text 不能为空').max(300, 'text 超过 300 字符上限，请分段多次调用'),
-    voice: z.string().min(1, 'voice 必填（用 list_voices 查询）'),
-    speed: z.number().min(0.5).max(2.0).optional(),
+    // P1-5：zod 消息不再复述「≤300」数字，避免与 invalidParamHint 重复；具体上限只在 hint 出现一次。
+    text: z.string().min(1, '不能为空').max(300, '超过长度上限，请分段多次调用'),
+    voice: z.string().min(1, '必填（用 list_voices 查询）'),
+    speed: z.number().min(0.5, '不得小于 0.5').max(2.0, '不得大于 2.0').optional(),
     format: z.enum(['wav']).optional(),
     engine: z.enum(['standard', 'premium']).optional(),
   }),

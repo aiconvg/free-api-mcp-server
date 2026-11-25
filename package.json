@@ -1,17 +1,37 @@
 {
   "name": "free-api-mcp-server",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "mcpName": "io.github.aiconvg/free-api-mcp",
   "type": "module",
   "description": "MCP server exposing the free TTS/ASR/OCR open API (voices, tts, asr, ocr, account, dubbing, video) over stdio and Streamable HTTP",
   "license": "MIT",
   "author": "aiconvg",
-  "keywords": ["mcp", "model-context-protocol", "modelcontextprotocol", "tts", "asr", "ocr", "text-to-speech", "speech-to-text", "dubbing", "video-transcription", "ai"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "modelcontextprotocol",
+    "tts",
+    "asr",
+    "ocr",
+    "text-to-speech",
+    "speech-to-text",
+    "dubbing",
+    "video-transcription",
+    "ai"
+  ],
   "homepage": "https://www.free-api.aiconvg.xin",
-  "repository": { "type": "git", "url": "git+https://github.com/aiconvg/free-api-mcp-server.git" },
-  "bugs": { "url": "https://github.com/aiconvg/free-api-mcp-server/issues" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aiconvg/free-api-mcp-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aiconvg/free-api-mcp-server/issues"
+  },
   "main": "src/index.js",
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
   "bin": {
     "free-api-mcp": "src/index.js"
   },

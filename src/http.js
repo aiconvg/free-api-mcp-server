@@ -1,11 +1,13 @@
-// HTTP 传输：Streamable HTTP + /healthz。
+// HTTP 传输：Streamable HTTP（仅 POST） + /healthz + /version。
 // 令牌：每次请求从 Authorization: Bearer 提取，用 AsyncLocalStorage 传给 handler（请求级隔离）。
 // 试用：无令牌 + TRIAL_LICENSE_TOKEN 已配置 → 进入试用上下文（IP 计数），
 //       Redis 不可用时 fail-closed，只放行只读工具并提示注册。
+// 说明：本服务只支持 POST /mcp（Streamable HTTP，JSON 响应），**不提供 SSE 推送**；
+//       非 POST 的 /mcp 明确 405，/sse 明确 404，避免把 GET 塞进 transport 挂起。
 import express from 'express';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { requestContext, logger } from './context.js';
-import { buildServer } from './server.js';
+import { buildServer, PKG_VERSION } from './server.js';
 import { initTrialStore, trialStoreAvailable } from './lib/trialStore.js';
 import { trialEnabled } from './lib/trial.js';
 
@@ -19,10 +21,12 @@ function extractBearer(req) {
   return m ? m[1].trim() : null;
 }
 
-// 真实客户端 IP 提取。信任边界：**只有当连接对端是本机回环**（自有反代 -> 本进程）
-// 时才信任反代覆写的转发头——反代用 X-Real-IP 覆盖，客户端自带的 X-Real-IP/XFF 一律被盖掉、伪造不了。
-// 非回环对端（理论上不应出现，端口只绑回环）一律直接用连接 IP，不信任任何头；
-// 优先取 X-Real-IP，取不到再回退。
+// 真实客户端 IP 提取。信任边界：**只有当连接对端是本机回环**（自有反向代理）
+// 时才信任反向代理覆写的转发头——代理用 X-Real-IP 覆盖，
+// 客户端自带的 X-Real-IP/XFF 一律被盖掉、伪造不了。非回环对端（理论上不应出现，端口只绑回环）
+// 一律直接用连接 IP，不信任任何头。
+// ⚠ 两个域名 /mcp 都用 `X-Forwarded-For $proxy_add_x_forwarded_for`（无回环尾、末位是真实客户端），
+//   旧逻辑「末位须为回环否则回退 socket」会把真实 IP 全塌成 127.0.0.1 一个桶，故改为 X-Real-IP 优先。
 function isLoopback(addr) {
   return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
 }
@@ -35,7 +39,7 @@ export function clientIp(req) {
   const remote = req.socket?.remoteAddress || 'unknown';
   // 非回环对端：不信任任何转发头
   if (!isLoopback(remote)) return normalizeIp(remote) || remote;
-  // 回环对端（自有反代）：优先 X-Real-IP（上游覆写，不可伪造）
+  // 回环对端（自有反向代理）：优先 X-Real-IP（代理覆写，不可伪造）
   const xri = req.headers['x-real-ip'];
   if (typeof xri === 'string' && xri.trim()) return normalizeIp(xri) || remote;
   // 回退：兼容旧部署——XFF 末位为回环则取倒数第二位
@@ -44,7 +48,7 @@ export function clientIp(req) {
     const parts = xff.split(',').map((s) => s.trim()).filter(Boolean);
     const last = parts[parts.length - 1];
     if (isLoopback(last)) return parts.length >= 2 ? normalizeIp(parts[parts.length - 2]) : remote;
-    // XFF 无回环尾：末位即真实客户端
+    // proxy_add_x_forwarded_for 无回环尾：末位即真实客户端
     if (parts.length >= 1) return normalizeIp(parts[parts.length - 1]);
   }
   return remote;
@@ -60,9 +64,16 @@ export async function runHttp() {
   app.get('/healthz', (_req, res) => {
     res.json({
       ok: true,
+      name: 'free-api-mcp',
+      version: PKG_VERSION,
       transport: 'http',
       trial: trialEnabled() ? (trialStoreAvailable() ? 'ready' : 'degraded') : 'off',
     });
+  });
+
+  // 版本自检（P1-6）：无需工具调用即可探版本
+  app.get('/version', (_req, res) => {
+    res.json({ name: 'free-api-mcp', version: PKG_VERSION, transport: 'http' });
   });
 
   // Origin 白名单（SDK 只在 DNS rebinding 校验里做 Host，Origin 需自行把关）
@@ -74,7 +85,8 @@ export async function runHttp() {
     next();
   });
 
-  app.all('/mcp', (req, res) => {
+  // 仅 POST /mcp 进入 transport（Streamable HTTP，无会话态，每请求一个传输实例）
+  app.post('/mcp', (req, res) => {
     const token = extractBearer(req);
     // 无令牌：试用启用且存储可用 → 试用上下文；否则放行让 handler 抛 AUTH_REQUIRED（引导注册）
     let trialCtx = null;
@@ -84,7 +96,6 @@ export async function runHttp() {
       } // Redis 不可用：fail-closed，不计费工具会被闸门拦下引导注册
     }
     requestContext.run({ token, trial: trialCtx, clientIp: clientIp(req) }, async () => {
-      // 每请求一个传输实例（无会话态，最简且并发安全）
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
@@ -102,10 +113,22 @@ export async function runHttp() {
     });
   });
 
+  // 非 POST 的 /mcp：明确 405（不再把 GET 塞进 transport 挂起 15s）
+  app.all('/mcp', (req, res) => {
+    res.set('Allow', 'POST').status(405)
+      .json({ error: 'Method Not Allowed: /mcp 仅支持 POST（Streamable HTTP，JSON 响应）' });
+  });
+
+  // 本服务不提供 SSE 推送：/sse 明确 404，避免被当作事件流
+  app.all('/sse', (req, res) => {
+    res.status(404)
+      .json({ error: 'Not Found: 本服务不提供 SSE/事件流；请用 POST /mcp（Streamable HTTP）' });
+  });
+
   await new Promise((resolve, reject) => {
-    // 只监听回环：托管端点仅经反代对外，避免端口直接暴露公网
+    // 只监听回环：对外仅经反向代理，避免端口直接暴露公网
     const srv = app.listen(PORT, '127.0.0.1', () => {
-      logger.info('http.started', { port: PORT, origins: ALLOWED_ORIGINS.length || 'any' });
+      logger.info('http.started', { port: PORT, origins: ALLOWED_ORIGINS.length || 'any', version: PKG_VERSION });
       resolve();
     });
     srv.on('error', reject);

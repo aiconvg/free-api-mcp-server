@@ -81,6 +81,23 @@ export async function consumeTrial(ip, tool, limits) {
   }
 }
 
+// 只读：取某 IP 当个北京日各可试能力已用次数（不扣减、不建键），供 get_account 展示个人额度视图。
+// 返回 { <tool>: { used, limit, remaining } }；存储不可用时按 0 计（fail-open，仅展示用）。
+export async function getTrialUsage(ip, limits) {
+  const out = {};
+  const day = beijingDayKey();
+  const h = ipHash(ip);
+  for (const tool of Object.keys(limits)) {
+    const limit = Number(limits[tool]) || 0;
+    let used = 0;
+    if (trialStoreAvailable()) {
+      try { const v = await client.get(`trial:use:${h}:${day}:${tool}`); used = v != null ? Number(v) : 0; } catch { /* 展示用，读失败按 0 */ }
+    }
+    out[tool] = { used, limit, remaining: Math.max(0, limit - used) };
+  }
+  return out;
+}
+
 // 上游调用失败时回滚本次扣减（额度在后端本就"失败不扣"，MCP 试用计数保持同口径）
 export async function rollbackTrial(token) {
   if (!trialStoreAvailable() || !token) return;

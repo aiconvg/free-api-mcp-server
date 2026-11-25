@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 // 版本单一事实源：以 package.json.version 为准，避免运行时 Server 版本与包版本漂移
 // （此前此处写死 '0.2.0'，与 package.json/server.json 的 0.1.0 不一致）。
-const PKG_VERSION = JSON.parse(
+export const PKG_VERSION = JSON.parse(
   readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'),
 ).version;
 
@@ -79,6 +79,7 @@ export function buildServer() {
       title: t.title,
       description: t.description,
       inputSchema: t.inputSchema,
+      ...(t.outputSchema ? { outputSchema: t.outputSchema } : {}),
       annotations: TOOL_ANNOTATIONS[t.name],
     })),
   }));
@@ -156,14 +157,19 @@ export function buildServer() {
     try {
       const result = await tool.handler(parsed.data);
       logger.info('tool.call', { tool: name, ms: Date.now() - started, ok: true });
-      let text = JSON.stringify(result, null, 2);
-      if (trialTicket) {
-        text += `\n\n${trialRemainingNote(name, trialTicket.remaining, trialTicket.limits)}`;
+      // P0-1：content[0].text 只放纯 JSON（保证客户端 json.loads 能过）。
+      // 游客剩余次数/注册引导改放「第二个 content block」（audience=assistant），不混入机器可解析的 JSON。
+      const content = [{ type: 'text', text: JSON.stringify(result, null, 2) }];
+      const notes = [];
+      if (trialTicket) notes.push(trialRemainingNote(name, trialTicket.remaining, trialTicket.limits));
+      if (localTicket) notes.push(trialRemainingNote(name, localTicket.remaining, localTicket.limits));
+      if (notes.length) {
+        content.push({ type: 'text', text: notes.join('\n'), annotations: { audience: ['assistant'] } });
       }
-      if (localTicket) {
-        text += `\n\n${trialRemainingNote(name, localTicket.remaining, localTicket.limits)}`;
-      }
-      return { content: [{ type: 'text', text }] };
+      const out = { content };
+      // P1-6：声明了 outputSchema 的工具，额外回结构化结果（与 content[0].text 的纯 JSON 同源）
+      if (tool.outputSchema && result && typeof result === 'object') out.structuredContent = result;
+      return out;
     } catch (err) {
       logger.warn('tool.call', {
         tool: name,
