@@ -36,7 +36,7 @@
 ### 游客试用（免注册）
 - **远程（托管 `/mcp`）**：客户端不填任何令牌即自动进入游客模式（服务端持内置试用令牌），免令牌即用，按公网 IP 计数。
 - **本地（公开 npm 包）**：**不内置**游客试用令牌（fail-closed）；stdio 必须自备 `FREE_API_TOKEN`，或自建部署时提供 `TRIAL_LICENSE_TOKEN`（或 `TRIAL_LICENSE_TOKEN_FILE`）才能以游客身份试用，否则进程启动即 fatal 退出，按本机实例计数。
-- 每 IP（远程）/ 每实例（stdio）**每北京日**：`text_to_speech` 30 次、`speech_to_text` 15 次、`ocr_image` 15 次；
+- 每 IP（远程）/ 每实例（stdio）**每北京日**：`text_to_speech` 30 次、`speech_to_text` 15 次、`ocr_image` 15 次（次日北京 00:00 恢复）；
 - 游客只放 `list_voices`、`get_account` + 上述 3 个能力；`submit_asr_job`（长音频异步）、配音、视频**不开放**（堵旁路）；
 - 真正可靠的全局限额由上游 02 游客专用令牌兜底，客户端计数仅作二级软限。
 
@@ -116,9 +116,11 @@ FREE_API_TOKEN=<你的令牌> FREE_API_BASE_URL=https://www.open-api.aiconvg.xin
 
 ## 错误码
 
-- `AUTH_REQUIRED`：令牌缺失/无效 → 引导注册。
-- `INVALID_PARAM`：入参校验失败（本地拦截，不触上游）。
-- `UPSTREAM_UNAVAILABLE`：上游网络不可达，稍后重试。
+- `AUTH_REQUIRED`：令牌缺失/无效 → 引导注册（附注册入口与 `FREE_API_TOKEN` 配置示例）。
+- `INVALID_PARAM`：入参校验失败（本地拦截，不触上游；按工具给出针对性提示）。
+- `QUOTA_EXCEEDED`：当日额度用尽 → 响应带 `resetAt`。游客按北京日界**次日 00:00** 恢复；注册用户按北京时间 **08:00** 重置。注册免费账号或购买当日额度包可继续。
+- `UPSTREAM_OVERLOAD`：上游过载（502/503 繁忙）→ 返回 `[UPSTREAM_OVERLOAD] 服务繁忙，请稍后重试（retryAfter N 秒）`，按 `retryAfter` 稍后重试。
+- `UPSTREAM_UNAVAILABLE`：上游网络不可达/暂不可用，稍后重试。
 
 ## 许可
 
