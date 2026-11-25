@@ -7,9 +7,19 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 export const requestContext = new AsyncLocalStorage();
 
 let defaultToken = null;
+// stdio 游客模式开关（进程级）。HTTP 路径恒为 false，互不影响。
+let guestMode = false;
 
 export function setDefaultToken(token) {
   defaultToken = token || null;
+}
+
+export function setGuestMode(v) {
+  guestMode = !!v;
+}
+
+export function isGuestMode() {
+  return guestMode;
 }
 
 export function getRequestToken() {

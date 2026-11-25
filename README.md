@@ -7,6 +7,7 @@
 ## 特性
 
 - 运行于 Node.js，STDIO 协议（`npx -y free-api-mcp-server` 即可拉起）；托管到云函数（如魔搭 / 阿里云函数计算）后会自动转 SSE 并带平台鉴权。
+- **游客默认可用（免注册）**：不填令牌也能直接试用（每实例 / 每 IP 每北京日 TTS 30 / ASR 15 / OCR 15 次）；填 `FREE_API_TOKEN` 解锁完整额度与高阶能力。
 - **每个用户填自己的许可证令牌**（`FREE_API_TOKEN`），计费/额度归属各自账户，互不影响。
 - 共 **13 个工具**（7 个免费能力 + 6 个付费能力）。
 
@@ -32,7 +33,14 @@
 
 ## 鉴权与配置
 
-先到 **https://www.free-api.aiconvg.xin** 注册获取免费许可证令牌（免费档每日 TTS 100 / ASR 50 / OCR 50 次），填入 `FREE_API_TOKEN`。
+### 游客试用（免注册，默认可用）
+不填任何令牌时自动进入游客模式（stdio 走内置游客试用令牌 `TRIAL_LICENSE_TOKEN[_FILE]`，HTTP 走内置试用令牌），开箱即用：
+- 每 IP（远程）/ 每实例（stdio）**每北京日**：`text_to_speech` 30 次、`speech_to_text` 15 次、`ocr_image` 15 次；
+- 游客只放 `list_voices`、`get_account` + 上述 3 个能力；`submit_asr_job`（长音频异步）、配音、视频**不开放**（堵旁路）；
+- 真正可靠的全局限额由上游 02 游客专用令牌兜底，客户端计数仅作二级软限。
+
+### 正式令牌（更高额度）
+到 **https://www.open-api.aiconvg.xin** 注册获取免费许可证令牌（免费档每日 TTS 100 / ASR 50 / OCR 50 次），填入 `FREE_API_TOKEN`，额度/计费归属各自账户。
 
 ```json
 {
@@ -75,7 +83,8 @@ FREE_API_TOKEN=<你的令牌> FREE_API_BASE_URL=https://www.open-api.aiconvg.xin
 
 ## 额度与计费
 
-- 免费档：每日 TTS 100 / ASR 50 / OCR 50 次（`get_account` 可查 used/limit/remaining）。
+- 游客试用（免注册）：每 IP / 每实例每北京日 TTS 30 / ASR 15 / OCR 15 次（ASR 仅同步 `speech_to_text` ≤60s；不含长音频 `submit_asr_job` / 配音 / 视频）。
+- 免费档（正式令牌）：每日 TTS 100 / ASR 50 / OCR 50 次（`get_account` 可查 used/limit/remaining）。
 - 付费能力：配音按音色单价/字、视频转写稿 5 字 1 积分；预占—结算，按实际结算，失败/取消全额解冻。
 - 失败不扣：上游失败自动返还/解冻。
 

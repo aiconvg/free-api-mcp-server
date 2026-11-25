@@ -86,12 +86,36 @@ async function simulate(ip, tool, limit, times) {
   return results;
 }
 
-// 生产默认额度（10/5/5）：直接读 trialLimits() 验证默认值与文档一致
+// 游客默认额度（TTS 30 / ASR 15 / OCR 15，北京日）= 旧 10/5/5 ×3；且不含 submit_asr_job（长音频异步旁路游客禁用）
 const { trialLimits } = await import('../src/lib/trial.js');
 const lim = trialLimits();
-check('默认额度 10/5/5（与文档一致）',
-  lim.text_to_speech === 10 && lim.speech_to_text === 5 && lim.submit_asr_job === 5 && lim.ocr_image === 5,
+check('游客默认额度 30/15/15（北京日口径）',
+  lim.text_to_speech === 30 && lim.speech_to_text === 15 && lim.ocr_image === 15 && !('submit_asr_job' in lim),
   JSON.stringify(lim));
+
+// guestGate 白名单：游客只放 5 个（3 可试 + 2 免费只读），submit_asr_job/配音/视频/轮询一律拒
+const { isGuestAllowed } = await import('../src/lib/guestGate.js');
+check('guestGate 允许：text_to_speech/speech_to_text/ocr_image/list_voices/get_account',
+  ['text_to_speech', 'speech_to_text', 'ocr_image', 'list_voices', 'get_account'].every(isGuestAllowed));
+check('guestGate 拒绝：submit_asr_job/dubbing_*/video_*/get_asr_job（赌旁路）',
+  ['submit_asr_job', 'get_asr_job', 'dubbing_submit', 'list_dubbing_voices', 'get_dubbing_task', 'submit_video_transcribe', 'get_video_transcribe']
+    .every((t) => !isGuestAllowed(t)));
+
+// localCounter：stdio 每实例每北京日 TTS 30 次，超限拒绝，回滚可再用
+const os = await import('node:os');
+const path = await import('node:path');
+const fs = await import('node:fs');
+process.env.MCP_LOCAL_COUNTER_FILE = path.join(os.tmpdir(), `mcp-local-test-${process.pid}-${Date.now()}.json`);
+const { consumeLocal, rollbackLocal } = await import('../src/lib/localCounter.js');
+let lcAllowed = 0;
+for (let i = 0; i < 31; i++) { if (consumeLocal('text_to_speech').allowed) lcAllowed += 1; else break; }
+check('localCounter 每实例每日 TTS 30 次后拒绝', lcAllowed === 30, `allowed=${lcAllowed}`);
+const rTicket = consumeLocal('ocr_image');
+check('localCounter ocr 首次允许（限额 15）', rTicket.allowed === true);
+rollbackLocal(rTicket);
+const afterRollback = consumeLocal('ocr_image');
+check('localCounter 回滚后再扣仍为第 1 次', afterRollback.allowed === true && afterRollback.usedThisCall === 1, `used=${afterRollback.usedThisCall}`);
+try { fs.unlinkSync(process.env.MCP_LOCAL_COUNTER_FILE); } catch { /* ignore */ }
 
 const seq = await simulate('ip-a', 'text_to_speech', 3, 5);
 check('IP 试用 3 次后耗尽（限流逻辑用小限额复算）', seq[0] === 'OK:2' && seq[1] === 'OK:1' && seq[2] === 'OK:0' && seq[3] === 'EXHAUSTED' && seq[4] === 'EXHAUSTED',

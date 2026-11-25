@@ -1,10 +1,10 @@
 import { logger } from '../context.js';
 import { readFileSync } from 'node:fs';
+import { GUEST_LIMITS, GUEST_QUOTA_TOOLS, guestExhaustedMessage, guestRemainingNote } from './guestGate.js';
 
-// 试用层（仅托管 HTTP）：无 Bearer 令牌的请求改用内置试用许可证调上游，
-// 计数与封顶在 trialStore（Redis，fail-closed）。stdio 模式不经过这里。
-
-const SIGNUP_URL = process.env.TRIAL_SIGNUP_URL || 'https://www.free-api.aiconvg.xin';
+// 试用层（托管 HTTP 无令牌 / stdio 游客）：无用户令牌时改用内置试用许可证调上游。
+//   计数与封顶：托管 HTTP → trialStore（Redis，fail-closed）；stdio 游客 → localCounter（本地文件）。
+// 可试能力与额度唯一事实源在 guestGate（GUEST_LIMITS / GUEST_QUOTA_TOOLS），此处只做令牌加载与转发。
 
 // 支持两种配置方式：
 //  1) TRIAL_LICENSE_TOKEN=<token 字面量>（.env 或环境变量）
@@ -30,28 +30,22 @@ export function trialToken() {
   return loadTrialToken();
 }
 
+// 试用额度：以 guestGate.GUEST_LIMITS 为唯一事实源。
+// 默认 TTS 30 / ASR(speech_to_text) 15 / OCR 15；submit_asr_job 不在可试集合（游客禁用长音频异步旁路）。
 export function trialLimits() {
-  return {
-    text_to_speech: Number(process.env.TRIAL_TTS_LIMIT || 10),
-    speech_to_text: Number(process.env.TRIAL_ASR_LIMIT || 5),
-    submit_asr_job: Number(process.env.TRIAL_ASR_LIMIT || 5),
-    ocr_image: Number(process.env.TRIAL_OCR_LIMIT || 5),
-  };
+  return GUEST_LIMITS;
 }
 
-export const TRIALABLE_TOOLS = new Set(Object.keys(trialLimits()));
+// 可试（计数）工具集：text_to_speech / speech_to_text / ocr_image
+export const TRIALABLE_TOOLS = GUEST_QUOTA_TOOLS;
 
-// 试用模式的错误与引导文案（AUTH_REQUIRED 为 MCP 本地码，02 不返回它）
+// 文案统一由 guestGate 提供（数字与引导口径一致）
 export function trialExhaustedMessage(used, limit) {
-  return [
-    '[AUTH_REQUIRED] 免费试用次数已用完' + (limit != null ? `（本能力上限 ${limit} 次）` : '') + '。',
-    `注册免费账号即可获得每日额度（TTS 100 / ASR 50 / OCR 50 次）：${SIGNUP_URL}`,
-    '拿到令牌后，在客户端 MCP 配置的 env 里设置 FREE_API_TOKEN 即可继续使用。',
-  ].join('\n');
+  return guestExhaustedMessage(used, limit);
 }
 
-export function trialRemainingNote(tool, remaining, limits) {
-  return `（试用模式：${tool} 剩余 ${remaining} 次；注册后每日额度更高 — ${SIGNUP_URL}）`;
+export function trialRemainingNote(tool, remaining) {
+  return guestRemainingNote(tool, remaining);
 }
 
 export function logTrial(event, data = {}) {

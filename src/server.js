@@ -3,9 +3,11 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { getRequestTrial, logger } from './context.js';
+import { getRequestTrial, isGuestMode, logger } from './context.js';
 import { errorToMcpContent } from './lib/errors.js';
 import { consumeTrial, rollbackTrial, trialStoreAvailable } from './lib/trialStore.js';
+import { consumeLocal, rollbackLocal } from './lib/localCounter.js';
+import { isGuestAllowed, guestBlockedMessage, logGuest } from './lib/guestGate.js';
 import { TRIALABLE_TOOLS, trialLimits, trialExhaustedMessage, trialRemainingNote, logTrial } from './lib/trial.js';
 import { listVoicesTool } from './tools/voices.js';
 import { getAccountTool } from './tools/account.js';
@@ -102,14 +104,28 @@ export function buildServer() {
       };
     }
 
-    // 试用闸门（仅托管 HTTP 无令牌请求）：计费工具先扣试用计数，失败回滚
+    // 游客闸门（白名单）：托管 HTTP 无令牌试用（trial.active）或 stdio 游客模式，均按白名单放行。
+    // 非白名单工具（submit_asr_job 长音频异步旁路 / 配音 / 视频等）游客一律拒，堵旁路。
     const trial = getRequestTrial();
+    const guest = !!trial?.active || isGuestMode();
+    if (guest && !isGuestAllowed(name)) {
+      logGuest('blocked', { tool: name, transport: trial?.active ? 'http-trial' : 'stdio-guest' });
+      return {
+        isError: true,
+        content: [{ type: 'text', text: guestBlockedMessage(name) }],
+      };
+    }
+
+    // 试用/游客额度闸门（只对可试计数工具）：
+    //  - 托管 HTTP 无令牌：Redis 计数（IP 维度，北京日），失败回滚
+    //  - stdio 游客：本地文件日计数（每实例维度，北京日）二级限流，失败回滚；全局限额在上游 02
     let trialTicket = null;
+    let localTicket = null;
     if (trial?.active && TRIALABLE_TOOLS.has(name)) {
       if (!trialStoreAvailable()) {
         return {
           isError: true,
-          content: [{ type: 'text', text: '[AUTH_REQUIRED] 试用服务暂不可用，请注册后使用：https://www.free-api.aiconvg.xin' }],
+          content: [{ type: 'text', text: '[AUTH_REQUIRED] 试用服务暂不可用，请注册后使用：https://www.open-api.aiconvg.xin' }],
         };
       }
       const limits = trialLimits();
@@ -123,6 +139,17 @@ export function buildServer() {
       }
       trialTicket = ticket;
       logTrial('consume', { tool: name, used: ticket.usedThisCall, remaining: ticket.remaining });
+    } else if (!trial?.active && isGuestMode() && TRIALABLE_TOOLS.has(name)) {
+      const ticket = consumeLocal(name);
+      if (!ticket.allowed) {
+        logTrial('local_denied', { tool: name, reason: ticket.reason });
+        return {
+          isError: true,
+          content: [{ type: 'text', text: trialExhaustedMessage(ticket.used, ticket.limit) }],
+        };
+      }
+      localTicket = ticket;
+      logTrial('local_consume', { tool: name, used: ticket.usedThisCall, remaining: ticket.remaining });
     }
 
     const started = Date.now();
@@ -133,6 +160,9 @@ export function buildServer() {
       if (trialTicket) {
         text += `\n\n${trialRemainingNote(name, trialTicket.remaining, trialTicket.limits)}`;
       }
+      if (localTicket) {
+        text += `\n\n${trialRemainingNote(name, localTicket.remaining, localTicket.limits)}`;
+      }
       return { content: [{ type: 'text', text }] };
     } catch (err) {
       logger.warn('tool.call', {
@@ -141,8 +171,9 @@ export function buildServer() {
         ok: false,
         code: err?.code || 'INTERNAL_ERROR',
       });
-      // 上游失败：后端不扣额度，试用计数同口径回滚
+      // 上游失败：后端不扣额度，试用/游客计数同口径回滚
       if (trialTicket) await rollbackTrial(trialTicket);
+      if (localTicket) rollbackLocal(localTicket);
       return errorToMcpContent(err);
     }
   });

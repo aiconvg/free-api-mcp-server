@@ -1,6 +1,7 @@
 import { createClient } from 'redis';
 import { createHash } from 'node:crypto';
 import { logger } from '../context.js';
+import { beijingDayKey } from './guestGate.js';
 
 // 试用计数（仅托管 HTTP）：
 //   trial:ip:<sha256(ip)>     → 该 IP 的试用资格（首次置 1，TTL = TRIAL_TTL_HOURS）
@@ -46,18 +47,19 @@ export async function consumeTrial(ip, tool, limits) {
     const limit = limits[tool];
     if (!limit) return { allowed: false, reason: 'tool_not_trialable' };
 
-    // 全平台日上限（先查后占，占不中直接拒）
-    const day = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    // 全平台日上限（先查后占，占不中直接拒）；日界用北京日，与 02 额度日界对齐
+    const day = beijingDayKey();
     const gKey = `trial:global:${day}`;
     const gUsed = await client.incr(gKey);
     if (gUsed === 1) await client.expire(gKey, 48 * 3600);
-    const dailyCap = Number(process.env.TRIAL_DAILY_CAP || 200);
+    const dailyCap = Number(process.env.TRIAL_DAILY_CAP || 3000);
     if (gUsed > dailyCap) {
       await client.decr(gKey);
       return { allowed: false, reason: 'global_cap' };
     }
 
-    const uKey = `trial:use:${h}:${tool}`;
+    // 每 IP 按「北京日 · 能力」计数：key 带 day，北京零点自然换新桶（真正的每日重置）
+    const uKey = `trial:use:${h}:${day}:${tool}`;
     const used = await client.incr(uKey);
     if (used === 1) await client.expire(uKey, TTL_MS);
     if (used > limit) {

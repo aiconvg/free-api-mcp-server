@@ -2,6 +2,7 @@
   "form": "verify 配置 —— 静态检查 → 单测；live 步骤只在 npm run verify:live 时跑",
   "syntax": { "dirs": ["src", "test"], "exts": [".js", ".mjs", ".cjs"] },
   "verify": [
+    { "name": "trial-unit", "cmd": "node test/trial.test.js" },
     { "name": "smoke:stdio-offline", "cmd": "node test/smoke.stdio.js" }
   ],
   "live": [
