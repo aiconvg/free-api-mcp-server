@@ -7,7 +7,7 @@
   "license": "MIT",
   "author": "aiconvg",
   "keywords": ["mcp", "model-context-protocol", "modelcontextprotocol", "tts", "asr", "ocr", "text-to-speech", "speech-to-text", "dubbing", "video-transcription", "ai"],
-  "homepage": "https://www.open-api.aiconvg.xin",
+  "homepage": "https://www.free-api.aiconvg.xin",
   "repository": { "type": "git", "url": "git+https://github.com/aiconvg/free-api-mcp-server.git" },
   "bugs": { "url": "https://github.com/aiconvg/free-api-mcp-server/issues" },
   "main": "src/index.js",

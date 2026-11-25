@@ -2,7 +2,7 @@
 
 把免费 / 付费的 **TTS · ASR · OCR · 多角色配音 · 视频转文字** 开放能力，以标准 MCP 工具暴露给任意 MCP 客户端（Trae / Claude / Cursor / 魔搭 Playground 等）。
 
-本服务是纯协议适配层：不存数据、不发牌、不做计费；上游为 `https://www.open-api.aiconvg.xin`，额度与计费都在上游按你的令牌结算。
+本服务是纯协议适配层：不存数据、不发牌、不做计费；上游为 `https://www.free-api.aiconvg.xin`，额度与计费都在上游按你的令牌结算。
 
 ## 特性
 
@@ -40,7 +40,7 @@
 - 真正可靠的全局限额由上游 02 游客专用令牌兜底，客户端计数仅作二级软限。
 
 ### 正式令牌（更高额度）
-到 **https://www.open-api.aiconvg.xin** 注册获取免费许可证令牌（免费档每日 TTS 100 / ASR 50 / OCR 50 次），填入 `FREE_API_TOKEN`，额度/计费归属各自账户。
+到 **https://www.free-api.aiconvg.xin** 注册获取免费许可证令牌（免费档每日 TTS 100 / ASR 50 / OCR 50 次），填入 `FREE_API_TOKEN`，额度/计费归属各自账户。
 
 ```json
 {
@@ -49,7 +49,7 @@
       "command": "npx",
       "args": ["-y", "free-api-mcp-server"],
       "env": {
-        "FREE_API_BASE_URL": "https://www.open-api.aiconvg.xin",
+        "FREE_API_BASE_URL": "https://www.free-api.aiconvg.xin",
         "FREE_API_TOKEN": "<你的许可证令牌>"
       }
     }
@@ -60,14 +60,14 @@
 | 环境变量 | 必填 | 说明 |
 |---|---|---|
 | `FREE_API_TOKEN` | ✅ | 你的许可证令牌（用户各自填写） |
-| `FREE_API_BASE_URL` | ✅ | 固定 `https://www.open-api.aiconvg.xin` |
+| `FREE_API_BASE_URL` | ✅ | 固定 `https://www.free-api.aiconvg.xin` |
 | `MCP_TRANSPORT` | 默认 stdio | 托管场景保持 stdio（平台自动转 SSE） |
 | `LOG_LEVEL` | 可选 | `debug/info/warn/error`，默认 info；日志走 stderr，stdout 只承载协议 |
 
 本地直跑：
 
 ```bash
-FREE_API_TOKEN=<你的令牌> FREE_API_BASE_URL=https://www.open-api.aiconvg.xin npx -y free-api-mcp-server
+FREE_API_TOKEN=<你的令牌> FREE_API_BASE_URL=https://www.free-api.aiconvg.xin npx -y free-api-mcp-server
 ```
 
 ## 调用示例

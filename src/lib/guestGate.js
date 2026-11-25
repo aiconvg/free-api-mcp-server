@@ -12,7 +12,7 @@ import { logger } from '../context.js';
 // 这些游客一律拒；游客只放：list_voices / get_account（免费只读）+ 3 个可试能力。
 // 真正可靠的全局限额仍压在上游 02 的游客专用令牌（日额度 + 限流）。
 
-const SIGNUP_URL = process.env.TRIAL_SIGNUP_URL || 'https://www.open-api.aiconvg.xin';
+const SIGNUP_URL = process.env.TRIAL_SIGNUP_URL || 'https://www.free-api.aiconvg.xin';
 
 // 北京日（UTC+8，中国无夏令时）：返回 YYYYMMDD，作为「每日」额度日界，
 // 与上游 02 的额度日界对齐（此前用 UTC 日，北京时间 08:00 才切日，会错位）。

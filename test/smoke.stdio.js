@@ -7,7 +7,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 const live = !!process.env.SMOKE_LIVE;
 const token = process.env.FREE_API_TOKEN || 'smoke-test-token';
 const baseUrl = live
-  ? (process.env.FREE_API_BASE_URL || 'https://www.open-api.aiconvg.xin')
+  ? (process.env.FREE_API_BASE_URL || 'https://www.free-api.aiconvg.xin')
   : 'http://127.0.0.1:9'; // 错误路径专用
 
 const transport = new StdioClientTransport({

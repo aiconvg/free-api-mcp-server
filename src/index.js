@@ -26,7 +26,7 @@ if (transport === 'stdio') {
   }
   if (guest) {
     process.stderr.write(
-      '[info] 游客模式：限次免费试用（每实例每北京日有上限，全局限额由上游兜底）。注册获取更高每日额度 → https://www.open-api.aiconvg.xin\n',
+      '[info] 游客模式：限次免费试用（每实例每北京日有上限，全局限额由上游兜底）。注册获取更高每日额度 → https://www.free-api.aiconvg.xin\n',
     );
   }
   runStdio(token, { guest }).catch((e) => {

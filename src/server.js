@@ -125,7 +125,7 @@ export function buildServer() {
       if (!trialStoreAvailable()) {
         return {
           isError: true,
-          content: [{ type: 'text', text: '[AUTH_REQUIRED] 试用服务暂不可用，请注册后使用：https://www.open-api.aiconvg.xin' }],
+          content: [{ type: 'text', text: '[AUTH_REQUIRED] 试用服务暂不可用，请注册后使用：https://www.free-api.aiconvg.xin' }],
         };
       }
       const limits = trialLimits();
