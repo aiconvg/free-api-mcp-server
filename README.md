@@ -7,7 +7,7 @@
 ## 特性
 
 - 运行于 Node.js，STDIO 协议（`npx -y free-api-mcp-server` 即可拉起）；托管到云函数（如魔搭 / 阿里云函数计算）后会自动转 SSE 并带平台鉴权。
-- **游客默认可用（免注册）**：不填令牌也能直接试用（每实例 / 每 IP 每北京日 TTS 30 / ASR 15 / OCR 15 次）；填 `FREE_API_TOKEN` 解锁完整额度与高阶能力。
+- **游客模式（免注册）**：**远程** `/mcp`（Streamable HTTP）客户端不填令牌即游客可用——服务端持内置试用令牌，每 IP 每北京日 TTS 30 / ASR 15 / OCR 15 次；**本地** `npx` 公开包**不内置**游客令牌，需自备 `FREE_API_TOKEN`（自建部署时也可配 `TRIAL_LICENSE_TOKEN[_FILE]`），否则启动报错退出。填 `FREE_API_TOKEN` 解锁完整额度与高阶能力。
 - **每个用户填自己的许可证令牌**（`FREE_API_TOKEN`），计费/额度归属各自账户，互不影响。
 - 共 **13 个工具**（7 个免费能力 + 6 个付费能力）。
 
@@ -33,8 +33,9 @@
 
 ## 鉴权与配置
 
-### 游客试用（免注册，默认可用）
-不填任何令牌时自动进入游客模式（stdio 走内置游客试用令牌 `TRIAL_LICENSE_TOKEN[_FILE]`，HTTP 走内置试用令牌），开箱即用：
+### 游客试用（免注册）
+- **远程（托管 `/mcp`）**：客户端不填任何令牌即自动进入游客模式（服务端持内置试用令牌），免令牌即用，按公网 IP 计数。
+- **本地（公开 npm 包）**：**不内置**游客试用令牌（fail-closed）；stdio 必须自备 `FREE_API_TOKEN`，或自建部署时提供 `TRIAL_LICENSE_TOKEN`（或 `TRIAL_LICENSE_TOKEN_FILE`）才能以游客身份试用，否则进程启动即 fatal 退出，按本机实例计数。
 - 每 IP（远程）/ 每实例（stdio）**每北京日**：`text_to_speech` 30 次、`speech_to_text` 15 次、`ocr_image` 15 次；
 - 游客只放 `list_voices`、`get_account` + 上述 3 个能力；`submit_asr_job`（长音频异步）、配音、视频**不开放**（堵旁路）；
 - 真正可靠的全局限额由上游 02 游客专用令牌兜底，客户端计数仅作二级软限。
