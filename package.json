@@ -1,6 +1,6 @@
 {
   "name": "free-api-mcp-server",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "mcpName": "io.github.aiconvg/free-api-mcp",
   "type": "module",
   "description": "MCP server exposing the free TTS/ASR/OCR open API (voices, tts, asr, ocr, account, dubbing, video) over stdio and Streamable HTTP",

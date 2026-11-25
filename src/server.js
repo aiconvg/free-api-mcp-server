@@ -4,7 +4,7 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { getRequestTrial, isGuestMode, logger } from './context.js';
-import { errorToMcpContent } from './lib/errors.js';
+import { errorToMcpContent, invalidParamHint } from './lib/errors.js';
 import { consumeTrial, rollbackTrial, trialStoreAvailable } from './lib/trialStore.js';
 import { consumeLocal, rollbackLocal } from './lib/localCounter.js';
 import { isGuestAllowed, guestBlockedMessage, logGuest } from './lib/guestGate.js';
@@ -99,7 +99,7 @@ export function buildServer() {
         isError: true,
         content: [{
           type: 'text',
-          text: `[INVALID_PARAM] 入参校验失败: ${parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'} ${i.message}`).join('; ')}`,
+          text: `[INVALID_PARAM] 入参校验失败: ${parsed.error.issues.map((i) => `${i.path.join('.') || '(root)'} ${i.message}`).join('; ')}\n${invalidParamHint(name)}`,
         }],
       };
     }
@@ -174,7 +174,7 @@ export function buildServer() {
       // 上游失败：后端不扣额度，试用/游客计数同口径回滚
       if (trialTicket) await rollbackTrial(trialTicket);
       if (localTicket) rollbackLocal(localTicket);
-      return errorToMcpContent(err);
+      return errorToMcpContent(err, { toolName: name });
     }
   });
 

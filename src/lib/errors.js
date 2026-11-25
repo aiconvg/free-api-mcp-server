@@ -4,7 +4,6 @@ import { UpstreamError } from './apiClient.js';
 const HINTS = {
   UNAUTHORIZED: '令牌无效或缺失。请到 https://www.free-api.aiconvg.xin 注册获取免费许可证，并在客户端配置 Authorization: Bearer <token> 后重试。',
   VOICE_NOT_ALLOWED: '音色不在开放白名单。先调用 list_voices 查看可用音色，再从中选择 voice 参数。',
-  INVALID_PARAM: '入参不合法。请检查必填字段与取值范围（TTS 文本 ≤300 字符、speed 0.5–2.0）。不要使用本地文件路径，音频/图片必须是公网可访问 URL。',
   TEXT_TOO_LONG: '文本超过 300 字符上限（付费音色硬限，2026-11-09 由 2000 收敛）。请分段合成后拼接播放。',
   PAYLOAD_TOO_LARGE: '资源超过上限（同步 ASR/OCR ≤8MB；异步 submit_asr_job ≤50MB）。请压缩后重新上传，或改用更短的音频（同步 ASR 还要求 ≤60 秒，长音频改用 submit_asr_job）。',
   RATE_LIMITED: '触发限速。按 retryAfter 秒数等待后重试。',
@@ -17,9 +16,28 @@ const HINTS = {
   INSUFFICIENT_CREDITS: '积分余额不足（付费能力按积分计费：多角色配音按音色单价/字、视频转写每 5 字 1 积分）。请登录 https://www.free-api.aiconvg.xin 顶部「充值」购买积分（1 元起，10 元赠 5%、50 元赠 10%）后重试；当前余额可用 get_account 查看。提示：先用 list_dubbing_voices 选免费开源音色（0 积分）可零成本完成配音。',
 };
 
-export function errorToMcpContent(err) {
+// INVALID_PARAM 的提示按工具定制：不同工具的真错因不同（OCR 传本地路径、视频传不支持站点…），
+// 统一套「TTS 文本 ≤300 字符、speed 0.5–2.0」会误导。按工具名给对应提示，未命中走通用兜底。
+const INVALID_PARAM_COMMON = '媒体参数（audioUrl / imageUrl / 视频链接）必须是公网可访问 URL，不能使用本地文件路径。';
+const INVALID_PARAM_HINTS = {
+  text_to_speech: 'TTS 入参不合法：text 必填且 ≤300 字符，speed 取值 0.5–2.0，voice 需用 list_voices 查询后选择。',
+  ocr_image: `OCR 入参不合法：imageUrl 必须是公网可访问的图片 URL（png / jpg / webp，≤8MB）。${INVALID_PARAM_COMMON}`,
+  speech_to_text: `ASR 入参不合法：audioUrl 必须是公网可访问的音频 URL（wav / mp3 / m4a，≤8MB、≤60 秒）。${INVALID_PARAM_COMMON}`,
+  submit_asr_job: `ASR 入参不合法：audioUrl 必须是公网可访问的音频 URL（wav / mp3 / m4a，≤50MB）。${INVALID_PARAM_COMMON}`,
+  submit_video_transcribe: '视频转写入参不合法：url 必须是受支持平台（抖音 / bilibili / YouTube / 快手 / 小红书 / TikTok）的公开可访问链接。',
+  get_video_transcribe: '视频转写入参不合法：url 必须是受支持平台（抖音 / bilibili / YouTube / 快手 / 小红书 / TikTok）的公开可访问链接。',
+  dubbing_submit: `配音入参不合法：segments 必须是 [{voice, text}] 数组、至少一段（voice 用 list_dubbing_voices 查询后选择）。${INVALID_PARAM_COMMON}`,
+};
+const INVALID_PARAM_GENERIC = `入参不合法：请检查必填字段与取值范围。${INVALID_PARAM_COMMON}`;
+
+export function invalidParamHint(toolName) {
+  return INVALID_PARAM_HINTS[toolName] || INVALID_PARAM_GENERIC;
+}
+
+export function errorToMcpContent(err, { toolName } = {}) {
   if (err instanceof UpstreamError) {
-    const lines = [`[${err.code}] ${err.message}`, '', HINTS[err.code] || ''].filter(Boolean);
+    const hint = err.code === 'INVALID_PARAM' ? invalidParamHint(toolName) : (HINTS[err.code] || '');
+    const lines = [`[${err.code}] ${err.message}`, '', hint].filter(Boolean);
     if (err.retryAfter != null) lines.push(`retryAfter: ${err.retryAfter}s`);
     if (err.resetAt) lines.push(`resetAt: ${err.resetAt}`);
     if (err.quota) lines.push(`quota: ${JSON.stringify(err.quota)}`);
