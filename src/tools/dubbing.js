@@ -13,6 +13,15 @@ export const dubbingVoicesTool = {
     '返回每个音色的 id、性别、语言、单价 creditsPerChar（免费音色为 0）。' +
     '提交配音前先从这里选音色 id；不计费。',
   inputSchema: { type: 'object', properties: {} },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      data: {
+        description: '上游音色目录（可能是数组或 {voices:[...]} 对象）；每项含 id/voice、gender、language、creditsPerChar（免费音色=0）',
+      },
+    },
+  },
   zodSchema: z.object({}).optional(),
   async handler() {
     return api.dubbingVoices();
@@ -46,6 +55,18 @@ export const dubbingSubmitTool = {
       },
     },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      taskId: { type: 'string', description: '大任务异步（HTTP 202）返回，用 get_dubbing_task 轮询' },
+      status: { type: 'string' },
+      audioUrl: { type: 'string', description: '小任务同步完成（HTTP 200）时返回' },
+      srtUrl: { type: 'string', description: '字幕 SRT（同步完成时返回）' },
+      creditCost: { type: 'number', description: '202=预估冻结；200=实扣' },
+      message: { type: 'string' },
+    },
+  },
   zodSchema: z.object({
     segments: z.array(z.object({
       voice: z.string().min(1, 'voice 必填'),
@@ -69,6 +90,20 @@ export const dubbingGetTool = {
     required: ['taskId'],
     properties: { taskId: { type: 'string', description: 'dubbing_submit 异步返回的任务 ID' } },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      taskId: { type: 'string' },
+      status: { type: 'string', enum: ['queued', 'running', 'succeeded', 'partial', 'failed', 'cancelled', 'canceled'] },
+      audioUrl: { type: 'string' },
+      srtUrl: { type: 'string' },
+      chargedCredits: { type: 'number', description: '终态实扣积分' },
+      segments: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      error: { type: 'string' },
+      message: { type: 'string' },
+    },
+  },
   zodSchema: z.object({ taskId: z.string().min(1, 'taskId 必填') }),
   async handler(args) {
     return api.dubbingGet(args.taskId);
@@ -85,6 +120,13 @@ export const dubbingCancelTool = {
     type: 'object',
     required: ['taskId'],
     properties: { taskId: { type: 'string', description: 'dubbing_submit 异步返回的任务 ID' } },
+  },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      data: { description: '上游取消结果（含 cancelled/status 等）' },
+    },
   },
   zodSchema: z.object({ taskId: z.string().min(1, 'taskId 必填') }),
   async handler(args) {

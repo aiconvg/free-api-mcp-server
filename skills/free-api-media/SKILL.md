@@ -1,8 +1,12 @@
 ---
 name: free-api-media
-version: 2.2.3
+version: 2.2.4
 last_updated: 2026-11-26
-description: free-api 视听工坊开放 API 的配套用法薄壳，教 agent 如何用一个令牌调用文本转语音（语音合成 / TTS）、语音转文字（语音转写 / ASR）、图片文字识别（文字识别 / OCR）、多角色配音（配音 / dubbing）、视频链接转文字。当用户要做语音合成、TTS、文字识别、OCR、语音转写、ASR、配音、dubbing、视频转文字/字幕稿时使用。
+description: >-
+  Companion skill for the free-api Media open API: with one token, call text-to-speech (TTS), speech-to-text (ASR), OCR,
+  multi-voice dubbing and video-link-to-text. Use when a user needs TTS / voiceover, image OCR, audio transcription,
+  dubbing, or video-to-subtitle text. —— free-api 视听工坊开放 API 的配套用法薄壳：用一个令牌调用 TTS / ASR / OCR /
+  多角色配音 / 视频链接转文字。
 triggers:
   - 语音合成 / 文本转语音 / TTS / 生成配音音频
   - 语音转文字 / 语音转写 / ASR / 音频转字幕
@@ -16,6 +20,48 @@ not_for:
   - 视频下载与剪辑 / 字幕烧录（本 skill 只做「视频链接→文字稿」，不下片、不剪辑、不把字幕烧进画面）
 ---
 
+# free-api Media Studio · Skill (English)
+
+> English-first guide. The full Chinese guide follows below (中文详解见下方).
+
+## What it does
+
+A thin "how-to-use" skill over the **free-api** open platform. It only describes how to call the API — it stores no data, issues no tokens and does no billing; quotas and billing are settled upstream against your own token. Authoritative parameters live in the portal docs at `https://www.free-api.aiconvg.xin`.
+
+Covers: **TTS (text-to-speech), ASR (speech-to-text), OCR (image text), multi-voice dubbing, and video-link-to-text**.
+
+## Domains (do not mix them up)
+
+| Purpose | Domain |
+|---|---|
+| Portal / signup / token / quota packs | `https://www.free-api.aiconvg.xin` |
+| REST API base | `https://www.open-api.aiconvg.xin` |
+| MCP remote endpoint (Streamable HTTP) | `https://www.free-api.aiconvg.xin/mcp` (also `https://www.open-api.aiconvg.xin/mcp`) |
+
+## Quick start (MCP, recommended)
+
+Client config (stdio via npx):
+
+```json
+{ "mcpServers": { "free-api": {
+  "command": "npx", "args": ["-y", "free-api-mcp-server"],
+  "env": { "FREE_API_BASE_URL": "https://www.open-api.aiconvg.xin", "FREE_API_TOKEN": "<your license token>" }
+} } }
+```
+
+Remote clients point at `https://www.free-api.aiconvg.xin/mcp` (Streamable HTTP) with header `Authorization: Bearer <token>`; no token → guest trial (per-IP limits apply).
+
+**Transport**: `/mcp` accepts **POST only** (Streamable HTTP); no SSE push — `GET`→405 (`Allow: POST`), `/sse`→404.
+
+## 13 tools
+
+`list_voices`, `get_account`, `text_to_speech`, `speech_to_text`, `submit_asr_job`, `get_asr_job`, `ocr_image` (free tier) · `list_dubbing_voices`, `dubbing_submit`, `get_dubbing_task`, `cancel_dubbing_task` (paid dubbing) · `submit_video_transcribe`, `get_video_transcribe` (paid video). Query/polling tools are free; billing tools never charge on failure.
+
+## Auth & quota
+
+Token goes in header `Authorization: Bearer <license token>` (REST and MCP share the same account / token / quota). Daily free quotas (standard engine, no credits): **guest 30/15/15**, **registered free 100/50/50**, **paid 200/100/100** (TTS/ASR/OCR) — resets **08:00 Beijing time**. Recharge **1 RMB = 10,000 points**; a day quota pack is 1,000 points = **+50 calls**, **max 2 packs/day**.
+
+---
 # free-api 视听工坊 · 用法薄壳
 
 这是一层「教 agent 怎么用」的知识薄壳，指向 free-api 开放平台后端。它只讲调用方式：**不存数据、不发牌、不做计费，不含任何密钥**；额度与计费都在上游按调用方自己的令牌结算。参数与口径以门户 `https://www.free-api.aiconvg.xin` 的「接入文档」为准。

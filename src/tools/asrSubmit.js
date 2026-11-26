@@ -16,8 +16,18 @@ export const asrSubmitTool = {
       lang: { type: 'string', description: '语种，auto 自动判定（默认）' },
     },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      taskId: { type: 'string' },
+      status: { type: 'string', enum: ['queued', 'running'] },
+      duration: { type: 'number', nullable: true },
+      quota: { type: 'object', additionalProperties: true },
+    },
+  },
   zodSchema: z.object({
-    audioUrl: z.string().url('audioUrl 必须是 http(s) 公网 URL'),
+    audioUrl: z.string().url('必须是 http(s) 公网 URL'),
     lang: z.string().optional(),
   }),
   async handler(args) {

@@ -1,7 +1,7 @@
 import { getRequestToken, getRequestTrial, getRequestClientIp, logger } from '../context.js';
 import { trialToken } from './trial.js';
 
-// 上游错误 envelope 见 openapi 契约 components.schemas.Error：
+// 上游错误 envelope 见 16 号仓主契约 components.schemas.Error：
 // { code, message, requestId, retryAfter?, resetAt?, quota? }
 export class UpstreamError extends Error {
   constructor(payload, httpStatus) {

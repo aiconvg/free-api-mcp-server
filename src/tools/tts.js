@@ -28,8 +28,8 @@ export const ttsTool = {
     },
   },
   zodSchema: z.object({
-    // P1-5：zod 消息不再复述「≤300」数字，避免与 invalidParamHint 重复；具体上限只在 hint 出现一次。
-    text: z.string().min(1, '不能为空').max(300, '超过长度上限，请分段多次调用'),
+    // 0.2.10 文案去重：具体原因（含上限数字）只在错误文案出现一次；不再叠加通用兜底 hint。
+    text: z.string().min(1, '不能为空').max(300, '超过长度上限（≤300 字符），请分段多次调用'),
     voice: z.string().min(1, '必填（用 list_voices 查询）'),
     speed: z.number().min(0.5, '不得小于 0.5').max(2.0, '不得大于 2.0').optional(),
     format: z.enum(['wav']).optional(),

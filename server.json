@@ -2,12 +2,12 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.aiconvg/free-api-mcp",
   "description": "Free TTS/ASR/OCR, dubbing and video-transcription API over MCP. Bearer token or guest trial.",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "free-api-mcp-server",
-      "version": "0.2.9",
+      "version": "0.2.10",
       "transport": {
         "type": "stdio"
       }

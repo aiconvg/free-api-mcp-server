@@ -21,6 +21,16 @@ export const videoSubmitTool = {
       url: { type: 'string', description: '视频链接（平台分享短链或完整链接，也可传整段分享文案，服务端自动提取）' },
     },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      taskId: { type: 'string' },
+      status: { type: 'string' },
+      credits: { type: 'number', description: '提交时冻结的预估积分' },
+      message: { type: 'string' },
+    },
+  },
   zodSchema: z.object({
     url: z.string().min(8, 'url 必填').max(600, 'url 过长（如为分享文案请只保留链接所在文案 ≤600 字符）'),
   }),
@@ -40,6 +50,20 @@ export const videoGetTool = {
     type: 'object',
     required: ['taskId'],
     properties: { taskId: { type: 'string', description: 'submit_video_transcribe 返回的任务 ID' } },
+  },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      taskId: { type: 'string' },
+      status: { type: 'string', enum: ['queued', 'downloading', 'transcribing', 'correcting', 'done', 'failed'] },
+      text: { type: 'string', description: 'status=done 返回的转写稿' },
+      markdown: { type: 'string', description: 'markdown 分段稿' },
+      chars: { type: 'integer', description: '字数' },
+      credits: { type: 'number', description: '实扣积分' },
+      error: { type: 'string', description: 'status=failed 时返回，冻结已全额解冻' },
+      message: { type: 'string' },
+    },
   },
   zodSchema: z.object({ taskId: z.string().min(1, 'taskId 必填') }),
   async handler(args) {

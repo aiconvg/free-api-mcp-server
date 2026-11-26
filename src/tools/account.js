@@ -1,16 +1,17 @@
 import { z } from 'zod';
+import { createHash } from 'node:crypto';
 import { api } from '../lib/apiClient.js';
 import { getRequestTrial, isGuestMode } from '../context.js';
 import { GUEST_LIMITS, nextBeijingResetAt } from '../lib/guestGate.js';
 import { getTrialUsage } from '../lib/trialStore.js';
 import { getLocalUsage } from '../lib/localCounter.js';
 
-function maskIp(ip) {
+// P2-6：personal.ip 原只掩最后一段（113.88.12.*），仍暴露出口网段/归属地线索。
+// 改为不可逆哈希（sha256 前 12 hex），只用于「同一 IP 复用」自证，不泄露任何网段信息。
+function hashIp(ip) {
   const s = String(ip || '');
   if (!s) return null;
-  const parts = s.split('.');
-  if (parts.length === 4) return `${parts[0]}.${parts[1]}.${parts[2]}.*`;
-  return s.replace(/:[^:]+$/, ':*');
+  return 'sha256:' + createHash('sha256').update(s).digest('hex').slice(0, 12);
 }
 
 // P0-2：游客/trial 上下文追加「本 IP / 本实例」的个人额度视图（30/15/15，北京 00:00 重置）。
@@ -22,7 +23,7 @@ async function buildPersonalView() {
   let usage; let scope; let ip = null;
   if (trial?.active) {
     usage = await getTrialUsage(trial.ip, GUEST_LIMITS);
-    scope = 'ip'; ip = maskIp(trial.ip);
+    scope = 'ip'; ip = hashIp(trial.ip);
   } else {
     usage = getLocalUsage();
     scope = 'local-instance';
@@ -36,7 +37,7 @@ async function buildPersonalView() {
   }
   return {
     scope,
-    ...(ip ? { ip } : {}),
+    ...(ip ? { ipHash: ip } : {}),
     resetAt: nextBeijingResetAt(),
     capabilities,
     exhausted,
@@ -58,7 +59,7 @@ export const getAccountTool = {
       requestId: { type: 'string' },
       app: { type: 'object', additionalProperties: true },
       quota: { type: 'object', additionalProperties: true },
-      personal: { type: 'object', additionalProperties: true, description: '游客个人额度视图（仅 guest/trial 返回）' },
+      personal: { type: 'object', additionalProperties: true, description: '游客个人额度视图（仅 guest/trial 返回）；ipHash=客户端 IP 的 sha256 前 12 位，不回传明文/网段' },
     },
   },
   zodSchema: z.object({}),

@@ -21,8 +21,8 @@ function extractBearer(req) {
   return m ? m[1].trim() : null;
 }
 
-// 真实客户端 IP 提取。信任边界：**只有当连接对端是本机回环**（自有反向代理）
-// 时才信任反向代理覆写的转发头——代理用 X-Real-IP 覆盖，
+// 真实客户端 IP 提取。信任边界：**只有当连接对端是本机回环**（自有 nginx 反代 127.0.0.1→8420）
+// 时才信任 nginx 覆写的转发头——nginx 用 `proxy_set_header X-Real-IP $remote_addr` 覆盖，
 // 客户端自带的 X-Real-IP/XFF 一律被盖掉、伪造不了。非回环对端（理论上不应出现，端口只绑回环）
 // 一律直接用连接 IP，不信任任何头。
 // ⚠ 两个域名 /mcp 都用 `X-Forwarded-For $proxy_add_x_forwarded_for`（无回环尾、末位是真实客户端），
@@ -39,7 +39,7 @@ export function clientIp(req) {
   const remote = req.socket?.remoteAddress || 'unknown';
   // 非回环对端：不信任任何转发头
   if (!isLoopback(remote)) return normalizeIp(remote) || remote;
-  // 回环对端（自有反向代理）：优先 X-Real-IP（代理覆写，不可伪造）
+  // 回环对端（自有 nginx）：优先 X-Real-IP（$remote_addr 覆写，不可伪造）
   const xri = req.headers['x-real-ip'];
   if (typeof xri === 'string' && xri.trim()) return normalizeIp(xri) || remote;
   // 回退：兼容旧部署——XFF 末位为回环则取倒数第二位
@@ -126,7 +126,7 @@ export async function runHttp() {
   });
 
   await new Promise((resolve, reject) => {
-    // 只监听回环：对外仅经反向代理，避免端口直接暴露公网
+    // 只监听回环：托管端点仅经 nginx 反代对外，避免端口直接暴露公网
     const srv = app.listen(PORT, '127.0.0.1', () => {
       logger.info('http.started', { port: PORT, origins: ALLOWED_ORIGINS.length || 'any', version: PKG_VERSION });
       resolve();

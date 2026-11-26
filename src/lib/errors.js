@@ -34,6 +34,21 @@ export function invalidParamHint(toolName) {
   return INVALID_PARAM_HINTS[toolName] || INVALID_PARAM_GENERIC;
 }
 
+// 0.2.10 文案去重：INVALID_PARAM 若已带「具体原因」（字段名 + 约束），不再追加通用兜底 hint，
+// 避免「入参不合法…」把同一约束说两遍；仅当只拿到泛化壳（或空）时才补针对性 hint。
+export function isGenericInvalidMessage(msg) {
+  const s = (msg || '').trim();
+  if (!s) return true;
+  return /^(入参校验失败|入参不合法|参数(校验失败|错误|不合法)|invalid\s+(params?|arguments?|request(\s+body)?)|validation\s+(failed|error)|bad\s+request)\s*[:：]?\s*$/i.test(s);
+}
+
+// 本地 zod 校验失败统一出口：具体原因只出一次，泛化/空才回落到按工具 hint。
+export function formatInvalidParam(toolName, issuesText) {
+  const s = (issuesText || '').trim();
+  if (isGenericInvalidMessage(s)) return `[INVALID_PARAM] ${invalidParamHint(toolName)}`;
+  return `[INVALID_PARAM] 入参校验失败: ${s}`;
+}
+
 export function errorToMcpContent(err, { toolName } = {}) {
   if (err instanceof UpstreamError) {
     // 502/503（网关/上游繁忙，或上游返回空体被解析成 INTERNAL_ERROR）：统一「服务繁忙，请稍后重试」，
@@ -49,7 +64,9 @@ export function errorToMcpContent(err, { toolName } = {}) {
       if (err.requestId) lines.push(`requestId: ${err.requestId}`);
       return { isError: true, content: [{ type: 'text', text: lines.join('\n') }] };
     }
-    const hint = err.code === 'INVALID_PARAM' ? invalidParamHint(toolName) : (HINTS[err.code] || '');
+    const hint = err.code === 'INVALID_PARAM'
+      ? (isGenericInvalidMessage(err.message) ? invalidParamHint(toolName) : '')
+      : (HINTS[err.code] || '');
     const lines = [`[${err.code}] ${err.message}`, '', hint].filter(Boolean);
     if (err.retryAfter != null) lines.push(`retryAfter: ${err.retryAfter}s`);
     if (err.resetAt) lines.push(`resetAt: ${err.resetAt}`);

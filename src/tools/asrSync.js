@@ -17,8 +17,23 @@ export const asrSyncTool = {
       engine: { type: 'string', enum: ['standard', 'premium'], description: '引擎：默认 standard（免费）；premium 需付费档，商业模型按积分计费' },
     },
   },
+  outputSchema: {
+    type: 'object', additionalProperties: true,
+    properties: {
+      requestId: { type: 'string' },
+      text: { type: 'string' },
+      duration: { type: 'number' },
+      segments: {
+        type: 'array',
+        items: { type: 'object', properties: { start: { type: 'number' }, end: { type: 'number' }, text: { type: 'string' } } },
+      },
+      engine: { type: 'string' },
+      language: { type: 'string', nullable: true },
+      quota: { type: 'object', additionalProperties: true },
+    },
+  },
   zodSchema: z.object({
-    audioUrl: z.string().url('audioUrl 必须是 http(s) 公网 URL'),
+    audioUrl: z.string().url('必须是 http(s) 公网 URL'),
     lang: z.string().optional(),
     engine: z.enum(['standard', 'premium']).optional(),
   }),
