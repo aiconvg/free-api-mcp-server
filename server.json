@@ -1,13 +1,13 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.aiconvg/free-api-mcp",
-  "description": "Free API MCP server: text-to-speech, speech-to-text, ASR jobs, OCR, multi-voice dubbing and video transcription over the free open API. Per-user Bearer token; standard engine free.",
-  "version": "0.2.8",
+  "description": "Free TTS/ASR/OCR, dubbing and video-transcription API over MCP. Bearer token or guest trial.",
+  "version": "0.2.9",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "free-api-mcp-server",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "transport": {
         "type": "stdio"
       }
@@ -16,7 +16,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://www.free-api.aiconvg.xin/mcp"
+      "url": "https://www.open-api.aiconvg.xin/mcp"
     }
   ]
 }
