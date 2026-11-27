@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "free-api": {
+      "url": "https://www.open-api.aiconvg.xin/mcp",
+      "headers": {}
+    }
+  }
+}
