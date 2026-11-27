@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "free-api",
+  "version": "0.2.10",
+  "description": "Free TTS / ASR / OCR, multi-voice dubbing and video-to-text via the free-api MCP server. Remote Streamable HTTP endpoint plus a local npx package; free daily quota and no-registration guest trial.",
+  "author": {
+    "name": "aiconvg"
+  },
+  "homepage": "https://github.com/aiconvg/free-api-mcp-server",
+  "repository": "https://github.com/aiconvg/free-api-mcp-server",
+  "license": "MIT",
+  "keywords": [
+    "tts",
+    "asr",
+    "ocr",
+    "dubbing",
+    "video-to-text",
+    "mcp",
+    "free-api"
+  ]
+}
