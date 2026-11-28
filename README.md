@@ -4,6 +4,11 @@ Expose the free / paid **TTS · ASR · OCR · Multi-Character Dubbing · Video t
 
 This service is purely a protocol adaptation layer: it does not store data, issue licenses, or handle billing. The upstream is `https://www.open-api.aiconvg.xin`, and quotas and billing are settled with your token at the upstream.
 
+## n8n / Dify integration guide
+
+Want to use this MCP server inside **n8n** or **Dify**? Follow the step-by-step guide (MCP node setup, transport type, and common pitfalls):
+👉 **https://www.free-api.aiconvg.xin/docs/open-api.html#s6-5**
+
 ## Features
 
 - **Transport**: the hosted `/mcp` endpoint accepts **POST only** (Streamable HTTP) and does **not** provide SSE push: `GET`→405 (`Allow: POST`), `/sse`→404. Clients should not use `EventSource`/GET long connections for push.
